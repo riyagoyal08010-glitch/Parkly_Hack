@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import { Loader } from '../components/ui/Loader'
 import { MapPin, Car, Search, SlidersHorizontal, X, Navigation } from 'lucide-react'
 import { AMENITIES } from '../lib/constants'
+import StarRating from '../components/StarRating'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -60,6 +61,7 @@ export default function Explore() {
   const [priceMax, setPriceMax] = useState(500)
   const [selectedAmenities, setSelectedAmenities] = useState([])
   const [highlightedId, setHighlightedId] = useState(null)
+  const [ratings, setRatings] = useState({})
 
   useEffect(() => {
     fetchParkings()
@@ -81,8 +83,20 @@ export default function Explore() {
       .from('parking_locations')
       .select('*')
       .eq('status', 'approved')
-    if (!error) setParkings(data || [])
+    if (!error) {
+      setParkings(data || [])
+      fetchRatings(data || [])
+    }
     setLoading(false)
+  }
+
+  const fetchRatings = async (parkingList) => {
+    const ratingMap = {}
+    for (const p of parkingList) {
+      const { data } = await insforge.database.rpc('get_parking_rating', { p_id: p.id })
+      if (data && data.length > 0) ratingMap[p.id] = data[0]
+    }
+    setRatings(ratingMap)
   }
 
   const filteredParkings = parkings.filter((p) => {
@@ -263,6 +277,11 @@ export default function Explore() {
                     <span className="font-bold text-sm">₹{parking.price_per_hour}/hr</span>
                     <span className="text-xs text-gray-500">{parking.available_slots} left</span>
                   </div>
+                  {ratings[parking.id] && (
+                    <div className="mt-1.5">
+                      <StarRating rating={ratings[parking.id].avg_rating} count={ratings[parking.id].review_count} size="sm" />
+                    </div>
+                  )}
                   <button
                     onClick={() => navigate(`/parking/${parking.id}`)}
                     className="mt-2 w-full bg-black text-white text-xs py-2 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
@@ -355,6 +374,15 @@ export default function Explore() {
                         )}
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between mt-2.5">
+                      {ratings[parking.id] ? (
+                        <StarRating rating={ratings[parking.id].avg_rating} count={ratings[parking.id].review_count} size="sm" />
+                      ) : (
+                        <span className="text-[11px] text-gray-400">New</span>
+                      )}
+                      <span className="text-[11px] text-gray-400">{parking.available_slots} slot{parking.available_slots !== 1 ? 's' : ''} left</span>
+                    </div>
 
                     <button
                       className="w-full mt-3 py-2 bg-black text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition-colors"

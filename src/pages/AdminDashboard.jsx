@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Loader } from '../components/ui/Loader'
-import { Users, Car, FileCheck, Calendar, MapPin, ChevronRight, DollarSign, Clock, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Users, Car, FileCheck, Calendar, MapPin, ChevronRight, DollarSign, Clock, AlertTriangle, CheckCircle, MessageSquare, Search, Star, Filter } from 'lucide-react'
+import ReviewCard from '../components/ReviewCard'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -15,6 +16,9 @@ export default function AdminDashboard() {
   const [pendingHosts, setPendingHosts] = useState([])
   const [pendingParkings, setPendingParkings] = useState([])
   const [stats, setStats] = useState({ users: 0, hosts: 0, parkings: 0, bookings: 0, revenue: 0, pending: 0 })
+  const [allReviews, setAllReviews] = useState([])
+  const [reviewStatusFilter, setReviewStatusFilter] = useState('all')
+  const [reviewSearch, setReviewSearch] = useState('')
 
   useEffect(() => {
     if (role === 'admin') fetchData()
@@ -66,6 +70,13 @@ export default function AdminDashboard() {
       pending: (hostsRes.data?.length || 0) + (parkingsRes.data?.length || 0),
     })
 
+    // Fetch all reviews for admin with host info
+    const { data: reviewsData } = await insforge.database
+      .from('reviews')
+      .select('*, profiles!user_id(name, email), parking_locations!parking_id(title, host_id, profiles!host_id(name))')
+      .order('created_at', { ascending: false })
+    setAllReviews(reviewsData || [])
+
     setLoading(false)
   }
 
@@ -116,6 +127,7 @@ export default function AdminDashboard() {
         {[
           { key: 'hosts', label: 'Host Applications', count: pendingHosts.length },
           { key: 'parkings', label: 'Parking Approvals', count: pendingParkings.length },
+          { key: 'reviews', label: 'All Reviews', count: allReviews.length },
         ].map((t) => (
           <button
             key={t.key}
@@ -227,6 +239,128 @@ export default function AdminDashboard() {
               </Card>
             ))
           )}
+        </div>
+      )}
+
+      {/* All Reviews */}
+      {tab === 'reviews' && (
+        <div>
+          {/* Review stats summary */}
+          {allReviews.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              {[
+                { label: 'Total Reviews', value: allReviews.length, icon: MessageSquare },
+                { label: 'Visible', value: allReviews.filter((r) => r.status === 'visible').length, icon: CheckCircle },
+                { label: 'Flagged', value: allReviews.filter((r) => r.status === 'flagged').length, icon: AlertTriangle },
+                {
+                  label: 'Avg Rating',
+                  value: (allReviews.filter((r) => r.status === 'visible').reduce((s, r) => s + r.rating, 0) / (allReviews.filter((r) => r.status === 'visible').length || 1)).toFixed(1),
+                  icon: Star,
+                },
+              ].map((s) => (
+                <Card key={s.label} className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <s.icon className="w-4 h-4 text-gray-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">{s.label}</p>
+                      <p className="text-lg font-bold">{s.value}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Search and filter bar */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by user, parking, or host name..."
+                value={reviewSearch}
+                onChange={(e) => setReviewSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              />
+            </div>
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+              {['all', 'visible', 'flagged', 'hidden'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setReviewStatusFilter(status)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all capitalize ${
+                    reviewStatusFilter === status ? 'bg-black text-white' : 'text-gray-500 hover:text-black'
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Reviews list */}
+          <div className="space-y-3">
+            {(() => {
+              const filtered = allReviews.filter((r) => {
+                if (reviewStatusFilter !== 'all' && r.status !== reviewStatusFilter) return false
+                if (reviewSearch.trim()) {
+                  const q = reviewSearch.toLowerCase()
+                  const userName = (r.profiles?.name || '').toLowerCase()
+                  const parkingName = (r.parking_locations?.title || '').toLowerCase()
+                  const hostName = (r.parking_locations?.profiles?.name || '').toLowerCase()
+                  if (!userName.includes(q) && !parkingName.includes(q) && !hostName.includes(q)) return false
+                }
+                return true
+              })
+
+              if (allReviews.length === 0) {
+                return (
+                  <Card className="p-12 text-center">
+                    <MessageSquare className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                    <p className="font-medium text-gray-900">No reviews yet</p>
+                    <p className="text-sm text-gray-400 mt-1">Reviews will appear as users rate parking spots</p>
+                  </Card>
+                )
+              }
+
+              if (filtered.length === 0) {
+                return (
+                  <Card className="p-8 text-center">
+                    <Search className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No reviews match your filters</p>
+                  </Card>
+                )
+              }
+
+              return filtered.map((review) => (
+                <div key={review.id}>
+                  {/* Host name label */}
+                  {review.parking_locations?.profiles?.name && (
+                    <p className="text-[10px] text-gray-400 mb-1 ml-1">
+                      Host: {review.parking_locations.profiles.name}
+                    </p>
+                  )}
+                  <ReviewCard
+                    review={review}
+                    showParking
+                    showUser
+                    showModeration
+                    onModerate={async (reviewId, newStatus) => {
+                      await insforge.database
+                        .from('reviews')
+                        .update({ status: newStatus })
+                        .eq('id', reviewId)
+                      setAllReviews((prev) =>
+                        prev.map((r) => r.id === reviewId ? { ...r, status: newStatus } : r)
+                      )
+                    }}
+                  />
+                </div>
+              ))
+            })()}
+          </div>
         </div>
       )}
     </div>

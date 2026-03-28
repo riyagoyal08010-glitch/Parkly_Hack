@@ -34,6 +34,12 @@ export const AMENITIES = [
   'Near Transit',
 ]
 
+export const REVIEW_STATUS = {
+  VISIBLE: 'visible',
+  FLAGGED: 'flagged',
+  HIDDEN: 'hidden',
+}
+
 export const DOCUMENT_TYPES = {
   ID_PROOF: 'id_proof',
   PROPERTY_PROOF: 'property_proof',

@@ -8,8 +8,10 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { Card } from '../components/ui/Card'
 import { Loader } from '../components/ui/Loader'
-import { MapPin, Star, Car, Clock, ArrowLeft, Shield } from 'lucide-react'
+import { MapPin, Star, Car, Clock, ArrowLeft, Shield, MessageSquare } from 'lucide-react'
 import SlotPicker from '../components/SlotPicker'
+import StarRating from '../components/StarRating'
+import ReviewCard from '../components/ReviewCard'
 
 export default function ParkingDetail() {
   const { id } = useParams()
@@ -27,10 +29,17 @@ export default function ParkingDetail() {
   const [selectedPhoto, setSelectedPhoto] = useState(0)
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [selectedSlotData, setSelectedSlotData] = useState(null)
+  const [parkingRating, setParkingRating] = useState({ avg_rating: 0, review_count: 0 })
+
+  const fetchRating = async () => {
+    const { data } = await insforge.database.rpc('get_parking_rating', { p_id: id })
+    if (data && data.length > 0) setParkingRating(data[0])
+  }
 
   useEffect(() => {
     fetchParking()
     fetchReviews()
+    fetchRating()
   }, [id])
 
   const fetchParking = async () => {
@@ -48,6 +57,7 @@ export default function ParkingDetail() {
       .from('reviews')
       .select('*, profiles!user_id(name)')
       .eq('parking_id', id)
+      .eq('status', 'visible')
       .order('created_at', { ascending: false })
     if (data) setReviews(data)
   }
@@ -125,9 +135,8 @@ export default function ParkingDetail() {
   if (loading) return <Loader fullScreen />
   if (!parking) return <div className="text-center py-20">Parking not found</div>
 
-  const avgRating = reviews.length
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-    : null
+  const avgRating = parkingRating.avg_rating
+  const reviewCount = parkingRating.review_count
 
   const photos = parking.photos || []
 
@@ -180,13 +189,7 @@ export default function ParkingDetail() {
             </div>
             <div className="flex items-center gap-4 mt-3">
               <span className="text-2xl font-bold">₹{parking.price_per_hour}<span className="text-sm font-normal text-gray-500">/hr</span></span>
-              {avgRating && (
-                <div className="flex items-center gap-1">
-                  <Star className="w-4 h-4 fill-black" />
-                  <span className="font-medium">{avgRating}</span>
-                  <span className="text-sm text-gray-500">({reviews.length})</span>
-                </div>
-              )}
+              <StarRating rating={avgRating} count={reviewCount} size="md" />
               <div className="flex items-center gap-1 text-sm text-gray-500">
                 <Car className="w-4 h-4" />
                 {parking.available_slots} / {parking.total_slots} available
@@ -219,28 +222,24 @@ export default function ParkingDetail() {
 
           {/* Reviews */}
           <div>
-            <h3 className="font-semibold mb-3">Reviews</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <h3 className="font-semibold">Reviews</h3>
+                {reviewCount > 0 && (
+                  <StarRating rating={avgRating} count={reviewCount} size="sm" />
+                )}
+              </div>
+            </div>
             {reviews.length === 0 ? (
-              <p className="text-sm text-gray-500">No reviews yet</p>
+              <Card className="p-8 text-center">
+                <MessageSquare className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No reviews yet</p>
+                <p className="text-xs text-gray-400 mt-1">Be the first to review after booking</p>
+              </Card>
             ) : (
               <div className="space-y-3">
                 {reviews.map((review) => (
-                  <Card key={review.id} className="p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{review.profiles?.name || 'User'}</span>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-3 h-3 ${i < review.rating ? 'fill-black text-black' : 'text-gray-300'}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    {review.comment && (
-                      <p className="text-sm text-gray-600 mt-1">{review.comment}</p>
-                    )}
-                  </Card>
+                  <ReviewCard key={review.id} review={review} />
                 ))}
               </div>
             )}
@@ -250,7 +249,10 @@ export default function ParkingDetail() {
         {/* Right: Booking */}
         <div>
           <Card className="p-6 sticky top-24">
-            <h3 className="font-semibold text-lg mb-4">Book this spot</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Book this spot</h3>
+              <StarRating rating={avgRating} count={reviewCount} size="sm" />
+            </div>
 
             <div className="space-y-4">
               {/* Slot selection */}
