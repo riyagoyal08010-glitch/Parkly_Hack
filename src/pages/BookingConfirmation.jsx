@@ -8,7 +8,8 @@ import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Loader } from '../components/ui/Loader'
 import { QRCodeSVG } from 'qrcode.react'
-import { CheckCircle, XCircle, MapPin, Clock, Download, ArrowLeft } from 'lucide-react'
+import { CheckCircle, XCircle, MapPin, Clock, Download, ArrowLeft, Star, Send } from 'lucide-react'
+import { Textarea } from '../components/ui/Input'
 
 export default function BookingConfirmation() {
   const { id } = useParams()
@@ -19,6 +20,11 @@ export default function BookingConfirmation() {
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewHover, setReviewHover] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const [existingReview, setExistingReview] = useState(null)
 
   const paymentStatus = searchParams.get('payment')
 
@@ -88,6 +94,58 @@ export default function BookingConfirmation() {
     }
 
     setLoading(false)
+  }
+
+  useEffect(() => {
+    if (booking?.parking_id && user?.id) {
+      fetchExistingReview()
+    }
+  }, [booking, user])
+
+  const fetchExistingReview = async () => {
+    const { data } = await insforge.database
+      .from('reviews')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('parking_id', booking.parking_id)
+      .maybeSingle()
+    if (data) {
+      setExistingReview(data)
+      setReviewRating(data.rating)
+      setReviewComment(data.comment || '')
+    }
+  }
+
+  const handleSubmitReview = async () => {
+    if (reviewRating === 0) {
+      toast('Please select a rating', 'error')
+      return
+    }
+    setSubmittingReview(true)
+    try {
+      const { error } = await insforge.database
+        .from('reviews')
+        .insert([{
+          user_id: user.id,
+          parking_id: booking.parking_id,
+          rating: reviewRating,
+          comment: reviewComment.trim() || null,
+        }])
+      if (error) {
+        if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
+          toast('You have already reviewed this parking', 'error')
+        } else {
+          throw error
+        }
+      } else {
+        setExistingReview({ rating: reviewRating, comment: reviewComment })
+        toast('Review submitted! Thanks for your feedback.', 'success')
+      }
+    } catch (err) {
+      toast(err.message || 'Failed to submit review', 'error')
+    } finally {
+      setSubmittingReview(false)
+    }
   }
 
   const downloadQR = () => {
@@ -210,6 +268,84 @@ export default function BookingConfirmation() {
             <Download className="w-4 h-4 mr-2" />
             Download QR
           </Button>
+        </Card>
+      )}
+
+      {/* Review Section */}
+      {isConfirmed && (
+        <Card className="p-6 mt-6">
+          <h3 className="font-semibold mb-1">Rate your experience</h3>
+          <p className="text-xs text-gray-500 mb-4">Help others by sharing your feedback</p>
+
+          {existingReview ? (
+            <div className="text-center">
+              <div className="flex justify-center gap-1 mb-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`w-7 h-7 ${
+                      star <= existingReview.rating
+                        ? 'fill-black text-black'
+                        : 'text-gray-200'
+                    }`}
+                  />
+                ))}
+              </div>
+              {existingReview.comment && (
+                <p className="text-sm text-gray-600 italic mt-2">"{existingReview.comment}"</p>
+              )}
+              <p className="text-xs text-gray-400 mt-3">Thanks for your review!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Star rating */}
+              <div className="flex justify-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    onMouseEnter={() => setReviewHover(star)}
+                    onMouseLeave={() => setReviewHover(0)}
+                    className="p-1 transition-transform hover:scale-110"
+                  >
+                    <Star
+                      className={`w-8 h-8 transition-colors ${
+                        star <= (reviewHover || reviewRating)
+                          ? 'fill-black text-black'
+                          : 'text-gray-200 hover:text-gray-300'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              {reviewRating > 0 && (
+                <p className="text-center text-sm text-gray-500">
+                  {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'][reviewRating]}
+                </p>
+              )}
+
+              {/* Comment */}
+              <Textarea
+                placeholder="How was your parking experience? (optional)"
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                className="text-sm"
+              />
+
+              {/* Submit */}
+              <Button
+                className="w-full rounded-xl"
+                size="md"
+                loading={submittingReview}
+                disabled={reviewRating === 0}
+                onClick={handleSubmitReview}
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Submit Review
+              </Button>
+            </div>
+          )}
         </Card>
       )}
 
