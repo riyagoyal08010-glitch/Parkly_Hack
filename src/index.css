@@ -102,7 +102,83 @@
   border: none !important;
 }
 
+/* Marker hover animation */
+.explore-marker {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.custom-marker:hover .explore-marker {
+  transform: scale(1.15) translateY(-3px) !important;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25));
+}
+
+/* Marker bounce animation on highlight */
+@keyframes marker-bounce {
+  0%, 100% { transform: scale(1.25) translateY(0); }
+  50% { transform: scale(1.25) translateY(-6px); }
+}
+
+.custom-marker:has([style*="scale(1.25)"]) .explore-marker {
+  animation: marker-bounce 0.6s ease-out;
+}
+
+/* Listing panel scrollbar */
+.listing-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.listing-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.listing-scroll::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 2px;
+}
+
+.listing-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
+}
+
+/* Animate-in utility */
+.animate-in {
+  animation: animate-in 0.2s ease-out;
+}
+
+.slide-in-from-top-1 {
+  --tw-enter-translate-y: -0.25rem;
+}
+
+.slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+
+@keyframes animate-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--tw-enter-translate-y, 0));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Button ripple effect */
+button:active {
+  transition: transform 0.1s ease;
+}
+
 /* Smooth transitions */
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Leaflet popup improvements for new markers */
+.leaflet-popup-content-wrapper {
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content img {
+  margin: 0 !important;
 }
