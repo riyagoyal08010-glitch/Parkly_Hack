@@ -17,6 +17,7 @@ import HostRegister from './pages/HostRegister'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminReview from './pages/AdminReview'
 import AdminLogin from './pages/AdminLogin'
+import Chatbot from './components/Chatbot'
 
 export default function App() {
   return (
@@ -51,6 +52,7 @@ export default function App() {
                 <Route path="/admin/review/:id" element={<AdminReview />} />
               </Route>
             </Routes>
+            <Chatbot />
           </div>
         </ToastProvider>
       </AuthProvider>
