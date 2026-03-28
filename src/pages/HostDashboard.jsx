@@ -123,10 +123,14 @@ export default function HostDashboard() {
           { icon: Car, label: 'Total Spots', value: parkings.length },
           { icon: FileCheck, label: 'Active Spots', value: approvedParkings.length },
           { icon: Car, label: 'Total Bookings', value: bookings.length },
-          { icon: DollarSign, label: 'Earnings', value: `₹${totalEarnings}` },
+          { icon: DollarSign, label: 'Earnings', value: `₹${totalEarnings}`, link: '/host/earnings' },
           { icon: Star, label: 'Avg Rating', value: hostRating.avg_rating ? `${hostRating.avg_rating} ★` : '—' },
         ].map((stat) => (
-          <Card key={stat.label} className="p-4">
+          <Card
+            key={stat.label}
+            className={`p-4 ${stat.link ? 'cursor-pointer hover:shadow-md' : ''}`}
+            onClick={stat.link ? () => navigate(stat.link) : undefined}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                 <stat.icon className="w-5 h-5" />
@@ -136,6 +140,7 @@ export default function HostDashboard() {
                 <p className="text-xl font-bold">{stat.value}</p>
               </div>
             </div>
+            {stat.link && <p className="text-[10px] text-gray-400 mt-2 text-right">View details →</p>}
           </Card>
         ))}
       </div>

@@ -27,6 +27,7 @@ export function Navbar() {
       case ROLES.HOST:
         return [
           { to: '/host/dashboard', label: 'Dashboard' },
+          { to: '/host/earnings', label: 'Earnings' },
           { to: '/host/register', label: 'Register Parking' },
         ]
       case ROLES.ADMIN:

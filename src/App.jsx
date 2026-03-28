@@ -12,6 +12,7 @@ import Explore from './pages/Explore'
 import ParkingDetail from './pages/ParkingDetail'
 import BookingConfirmation from './pages/BookingConfirmation'
 import HostDashboard from './pages/HostDashboard'
+import HostEarnings from './pages/HostEarnings'
 import HostRegister from './pages/HostRegister'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminReview from './pages/AdminReview'
@@ -40,6 +41,7 @@ export default function App() {
               {/* Host routes */}
               <Route element={<ProtectedRoute allowedRoles={[ROLES.HOST]} />}>
                 <Route path="/host/dashboard" element={<HostDashboard />} />
+                <Route path="/host/earnings" element={<HostEarnings />} />
                 <Route path="/host/register" element={<HostRegister />} />
               </Route>
 
