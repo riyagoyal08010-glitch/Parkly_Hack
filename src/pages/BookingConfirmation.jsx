@@ -68,6 +68,15 @@ export default function BookingConfirmation() {
         })
         .eq('id', id)
 
+      // Finalize the slot booking — clears soft lock, marks permanent for this date
+      if (data.slot_id) {
+        await insforge.database.rpc('book_slot', {
+          slot_uuid: data.slot_id,
+          user_uuid: data.user_id,
+          b_id: data.id,
+        })
+      }
+
       await insforge.database.rpc('decrement_available_slots', {
         parking_uuid: data.parking_id,
       })
@@ -82,6 +91,13 @@ export default function BookingConfirmation() {
       setProcessing(false)
       toast('Payment successful! Booking confirmed.', 'success')
     } else if (paymentStatus === 'cancelled' && data.payment_status === 'pending') {
+      // Release the soft lock immediately on cancel
+      if (data.slot_id) {
+        await insforge.database.rpc('unlock_slot', {
+          slot_uuid: data.slot_id,
+          user_uuid: data.user_id,
+        })
+      }
       await insforge.database
         .from('bookings')
         .update({ payment_status: 'failed', status: 'cancelled' })

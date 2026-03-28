@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { insforge } from '../lib/insforge'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/ui/Toast'
@@ -8,10 +11,30 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { Card } from '../components/ui/Card'
 import { Loader } from '../components/ui/Loader'
-import { MapPin, Star, Car, Clock, ArrowLeft, Shield, MessageSquare } from 'lucide-react'
+import { MapPin, Star, Car, Clock, ArrowLeft, Shield, MessageSquare, Navigation } from 'lucide-react'
 import SlotPicker from '../components/SlotPicker'
 import StarRating from '../components/StarRating'
 import ReviewCard from '../components/ReviewCard'
+
+function createPriceIcon(price, isCurrent = false) {
+  const bg = isCurrent ? '#000000' : 'rgba(255,255,255,0.95)'
+  const fg = isCurrent ? '#ffffff' : '#000000'
+  const shadow = isCurrent
+    ? '0 0 0 2px #000, 0 4px 20px rgba(0,0,0,0.4)'
+    : '0 2px 10px rgba(0,0,0,0.5)'
+  const scale = isCurrent ? 'transform:scale(1.15);' : ''
+  const pointer = isCurrent ? '#000000' : 'rgba(255,255,255,0.95)'
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="position:relative;display:inline-block;${scale}transition:transform 0.2s;cursor:pointer;">
+      <div style="background:${bg};color:${fg};padding:6px 12px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:${shadow};letter-spacing:-0.02em;">₹${price}</div>
+      <div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:7px solid ${pointer};margin:-1px auto 0;"></div>
+    </div>`,
+    iconSize: [0, 0],
+    iconAnchor: [35, 48],
+    popupAnchor: [0, -48],
+  })
+}
 
 export default function ParkingDetail() {
   const { id } = useParams()
@@ -30,6 +53,7 @@ export default function ParkingDetail() {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [selectedSlotData, setSelectedSlotData] = useState(null)
   const [parkingRating, setParkingRating] = useState({ avg_rating: 0, review_count: 0 })
+  const [nearbySpots, setNearbySpots] = useState([])
 
   const fetchRating = async () => {
     const { data } = await insforge.database.rpc('get_parking_rating', { p_id: id })
@@ -40,7 +64,16 @@ export default function ParkingDetail() {
     fetchParking()
     fetchReviews()
     fetchRating()
+    fetchNearbySpots()
   }, [id])
+
+  const fetchNearbySpots = async () => {
+    const { data } = await insforge.database
+      .from('parking_locations')
+      .select('id, title, address, lat, lng, price_per_hour, available_slots')
+      .eq('status', 'approved')
+    if (data) setNearbySpots(data)
+  }
 
   const fetchParking = async () => {
     const { data, error } = await insforge.database
@@ -71,22 +104,43 @@ export default function ParkingDetail() {
       toast('End time must be after start time', 'error')
       return
     }
-    if (!parking.available_slots || parking.available_slots <= 0) {
-      toast('No slots available', 'error')
+    if (!selectedSlot) {
+      toast('Please select a parking slot', 'error')
       return
     }
 
     setBooking(true)
     try {
+      // 1. Soft-lock the slot (60s expiry) before payment
+      const { data: lockResult, error: lockError } = await insforge.database.rpc('lock_slot', {
+        slot_uuid: selectedSlot,
+        user_uuid: user.id,
+      })
+
+      // RPC returns boolean — may come as true, [true], or [{lock_slot: true}]
+      const lockSuccess = lockResult === true
+        || lockResult?.[0] === true
+        || lockResult?.[0]?.lock_slot === true
+        || (Array.isArray(lockResult) && lockResult.length > 0 && lockResult[0] !== false)
+
+      if (lockError || !lockSuccess) {
+        toast('Slot just got taken by someone else. Please select another.', 'error')
+        setSelectedSlot(null)
+        setSelectedSlotData(null)
+        setBooking(false)
+        return
+      }
+
       const startTime = new Date(`${date}T${startHour.padStart(2, '0')}:00:00`)
       const endTime = new Date(`${date}T${endHour.padStart(2, '0')}:00:00`)
 
-      // Create booking
+      // 2. Create booking with pending payment
       const { data: bookingData, error: bookingError } = await insforge.database
         .from('bookings')
         .insert([{
           user_id: user.id,
           parking_id: id,
+          slot_id: selectedSlot,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
           total_amount: totalAmount,
@@ -96,18 +150,15 @@ export default function ParkingDetail() {
         .select()
         .single()
 
-      if (bookingError) throw new Error(bookingError.message)
-
-      // Book the selected slot
-      if (selectedSlot) {
-        await insforge.database.rpc('book_slot', {
-          slot_uuid: selectedSlot,
-          user_uuid: user.id,
-          b_id: bookingData.id,
-        })
+      if (bookingError) {
+        // Release lock if booking insert fails
+        await insforge.database.rpc('unlock_slot', { slot_uuid: selectedSlot, user_uuid: user.id })
+        throw new Error(bookingError.message)
       }
 
-      // Create Stripe Checkout Session
+      // 3. Redirect to Stripe — slot stays soft-locked for 60s
+      // If payment succeeds: BookingConfirmation marks it completed + calls book_slot
+      // If payment fails/cancelled: lock auto-expires after 60s
       const session = await createCheckoutSession({
         bookingId: bookingData.id,
         amount: totalAmount,
@@ -115,7 +166,6 @@ export default function ParkingDetail() {
         userEmail: profile?.email || user.email,
       })
 
-      // Redirect to Stripe Checkout
       if (session.url) {
         window.location.href = session.url
       } else {
@@ -220,6 +270,59 @@ export default function ParkingDetail() {
             </div>
           )}
 
+          {/* Map with all parking spots */}
+          {parking.lat && parking.lng && (
+            <div>
+              <h3 className="font-semibold mb-3">Location & Nearby Spots</h3>
+              <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm" style={{ height: 300 }}>
+                <MapContainer
+                  center={[parking.lat, parking.lng]}
+                  zoom={14}
+                  style={{ width: '100%', height: '100%' }}
+                  zoomControl={false}
+                  scrollWheelZoom={false}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                  />
+                  {nearbySpots.map((spot) => (
+                    <Marker
+                      key={spot.id}
+                      position={[spot.lat, spot.lng]}
+                      icon={createPriceIcon(spot.price_per_hour, spot.id === id)}
+                      eventHandlers={{
+                        mouseover: (e) => e.target.openPopup(),
+                      }}
+                    >
+                      <Popup>
+                        <div className="min-w-[170px] p-1">
+                          <h4 className="font-bold text-sm">{spot.title}</h4>
+                          <p className="text-xs text-gray-500 mt-0.5">{spot.address}</p>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="font-bold text-sm">₹{spot.price_per_hour}/hr</span>
+                            <span className="text-xs text-gray-400">{spot.available_slots} left</span>
+                          </div>
+                          {spot.id !== id && (
+                            <button
+                              onClick={() => navigate(`/parking/${spot.id}`)}
+                              className="mt-2 w-full bg-black text-white text-xs py-1.5 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+                            >
+                              View Details
+                            </button>
+                          )}
+                          {spot.id === id && (
+                            <p className="mt-2 text-center text-[10px] text-gray-400 font-medium">You are here</p>
+                          )}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </div>
+            </div>
+          )}
+
           {/* Reviews */}
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -255,33 +358,14 @@ export default function ParkingDetail() {
             </div>
 
             <div className="space-y-4">
-              {/* Slot selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Choose your spot</label>
-                <SlotPicker
-                  parkingId={id}
-                  selectedSlotId={selectedSlot}
-                  onSlotSelect={(slotId, slotData) => {
-                    setSelectedSlot(slotId)
-                    setSelectedSlotData(slotData)
-                  }}
-                />
-                {selectedSlotData && (
-                  <p className="text-xs text-center mt-2 font-medium">
-                    Selected: <span className="bg-black text-white px-2 py-0.5 rounded">{selectedSlotData.slot_label}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="border-t my-2" />
-
+              {/* 1. Date & Time selection first */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                 <input
                   type="date"
                   value={date}
                   min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => { setDate(e.target.value); setSelectedSlot(null); setSelectedSlotData(null) }}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
@@ -291,7 +375,7 @@ export default function ParkingDetail() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
                   <select
                     value={startHour}
-                    onChange={(e) => setStartHour(e.target.value)}
+                    onChange={(e) => { setStartHour(e.target.value); setSelectedSlot(null); setSelectedSlotData(null) }}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black"
                   >
                     {hours.map((h) => (
@@ -303,7 +387,7 @@ export default function ParkingDetail() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
                   <select
                     value={endHour}
-                    onChange={(e) => setEndHour(e.target.value)}
+                    onChange={(e) => { setEndHour(e.target.value); setSelectedSlot(null); setSelectedSlotData(null) }}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black"
                   >
                     {hours.map((h) => (
@@ -313,6 +397,36 @@ export default function ParkingDetail() {
                 </div>
               </div>
 
+              <div className="border-t my-2" />
+
+              {/* 2. Slot selection — date-aware */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Choose your spot</label>
+                {duration <= 0 ? (
+                  <div className="text-center py-6 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-400">Select a valid time range to see available slots</p>
+                  </div>
+                ) : (
+                  <SlotPicker
+                    parkingId={id}
+                    selectedSlotId={selectedSlot}
+                    date={date}
+                    startHour={startHour}
+                    endHour={endHour}
+                    onSlotSelect={(slotId, slotData) => {
+                      setSelectedSlot(slotId)
+                      setSelectedSlotData(slotData)
+                    }}
+                  />
+                )}
+                {selectedSlotData && (
+                  <p className="text-xs text-center mt-2 font-medium">
+                    Selected: <span className="bg-black text-white px-2 py-0.5 rounded">{selectedSlotData.slot_label}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* 3. Pricing summary */}
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">₹{parking.price_per_hour} x {duration} hr{duration !== 1 ? 's' : ''}</span>
@@ -328,17 +442,17 @@ export default function ParkingDetail() {
                 className="w-full"
                 size="lg"
                 loading={booking}
-                disabled={duration <= 0 || parking.available_slots <= 0 || !selectedSlot}
+                disabled={duration <= 0 || !selectedSlot}
                 onClick={handleBooking}
               >
-                {parking.available_slots <= 0 ? 'Fully Booked' : `Pay ₹${totalAmount}`}
+                {`Pay ₹${totalAmount}`}
               </Button>
 
               {duration <= 0 && (
                 <p className="text-xs text-red-500 text-center">Select valid time range</p>
               )}
               {duration > 0 && !selectedSlot && (
-                <p className="text-xs text-gray-500 text-center">Select a parking slot above</p>
+                <p className="text-xs text-gray-500 text-center">Select a parking slot to continue</p>
               )}
             </div>
           </Card>
