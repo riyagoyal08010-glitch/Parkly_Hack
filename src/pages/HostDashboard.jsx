@@ -6,7 +6,7 @@ import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Loader } from '../components/ui/Loader'
-import { MapPin, Plus, Car, DollarSign, FileCheck, AlertCircle, Star, MessageSquare } from 'lucide-react'
+import { MapPin, Plus, Car, IndianRupee, FileCheck, AlertCircle, Star, MessageSquare } from 'lucide-react'
 import ReviewCard from '../components/ReviewCard'
 import StarRating from '../components/StarRating'
 
@@ -123,7 +123,7 @@ export default function HostDashboard() {
           { icon: Car, label: 'Total Spots', value: parkings.length },
           { icon: FileCheck, label: 'Active Spots', value: approvedParkings.length },
           { icon: Car, label: 'Total Bookings', value: bookings.length },
-          { icon: DollarSign, label: 'Earnings', value: `₹${totalEarnings}`, link: '/host/earnings' },
+          { icon: IndianRupee, label: 'Earnings', value: `₹${totalEarnings}`, link: '/host/earnings' },
           { icon: Star, label: 'Avg Rating', value: hostRating.avg_rating ? `${hostRating.avg_rating} ★` : '—' },
         ].map((stat) => (
           <Card

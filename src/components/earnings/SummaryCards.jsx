@@ -1,4 +1,4 @@
-import { DollarSign, Calendar, TrendingUp, Car, Building2, IndianRupee } from 'lucide-react'
+import { Calendar, TrendingUp, Car, Building2, IndianRupee } from 'lucide-react'
 
 function SkeletonCard() {
   return (
@@ -35,7 +35,7 @@ export default function SummaryCards({ stats, loading }) {
     {
       label: "Today's Earnings",
       value: `₹${stats.todayEarnings.toLocaleString('en-IN')}`,
-      icon: DollarSign,
+      icon: IndianRupee,
       color: 'bg-white',
       iconColor: 'bg-emerald-50 text-emerald-600',
       growth: null,

@@ -12,6 +12,7 @@
   "dependencies": {
     "@insforge/sdk": "^1.2.2",
     "@stripe/stripe-js": "^9.0.0",
+    "framer-motion": "^12.38.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.7.0",
     "qrcode.react": "^4.2.0",
