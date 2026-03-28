@@ -61,6 +61,7 @@ export default function Landing() {
   const navigate = useNavigate()
   const { user, role } = useAuth()
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [openFaq, setOpenFaq] = useState(null)
 
   useEffect(() => {
     if (user && role) {
@@ -568,6 +569,93 @@ export default function Landing() {
               Get Started Free
               <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== FAQ ===== */}
+      <section className="bg-black py-24 sm:py-32 relative overflow-hidden">
+        {/* Subtle background texture */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
+        }} />
+
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 relative">
+          {/* Heading */}
+          <div className="text-center mb-16">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-gray-500 mb-4">FAQ&apos;s</p>
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
+              Common questions<br className="hidden sm:block" /> about PARKLY.
+            </h2>
+            <p className="text-gray-500 mt-4 text-base">
+              Helping you understand our community-driven ecosystem.
+            </p>
+          </div>
+
+          {/* Accordion */}
+          <div className="space-y-3">
+            {[
+              {
+                q: 'How does the booking process work?',
+                a: 'Select a vacant spot on the interactive map, define the duration, and complete the digital payment. The reservation is active immediately.',
+              },
+              {
+                q: 'Can I list a private parking space?',
+                a: 'Yes. Register as a host, upload spot details, and set availability to monetize underutilized space.',
+              },
+              {
+                q: 'Is real-time vacancy data accurate?',
+                a: 'Yes. The platform uses IoT sensor integration and digital sync to maintain 99% inventory accuracy.',
+              },
+              {
+                q: 'What happens if a reserved spot is occupied?',
+                a: 'Report the violation via the app for an immediate reroute to a nearby priority spot or a full refund.',
+              },
+            ].map((faq, idx) => {
+              const isOpen = openFaq === idx
+              return (
+                <div
+                  key={idx}
+                  className={`bg-white rounded-2xl transition-all duration-300 ${
+                    isOpen ? 'shadow-2xl shadow-white/5' : 'hover:shadow-lg hover:shadow-white/5'
+                  }`}
+                >
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full flex items-center justify-between px-6 sm:px-8 py-5 sm:py-6 text-left"
+                  >
+                    <span className="font-semibold text-sm sm:text-base text-black pr-4 leading-snug">
+                      {faq.q}
+                    </span>
+                    <span
+                      className={`w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0 transition-all duration-300 ${
+                        isOpen ? 'bg-black border-black rotate-0' : 'bg-white rotate-0 hover:border-gray-400'
+                      }`}
+                    >
+                      <span className={`text-lg font-light leading-none transition-transform duration-300 ${
+                        isOpen ? 'text-white rotate-45' : 'text-black rotate-0'
+                      }`}>
+                        +
+                      </span>
+                    </span>
+                  </button>
+                  <div
+                    className="overflow-hidden transition-all duration-400 ease-in-out"
+                    style={{
+                      maxHeight: isOpen ? '200px' : '0px',
+                      opacity: isOpen ? 1 : 0,
+                      transition: 'max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
+                    }}
+                  >
+                    <div className="px-6 sm:px-8 pb-6 sm:pb-7">
+                      <div className="h-px bg-gray-100 mb-4" />
+                      <p className="text-sm text-gray-500 leading-relaxed">{faq.a}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
