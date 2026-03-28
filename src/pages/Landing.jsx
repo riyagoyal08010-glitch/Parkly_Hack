@@ -1,9 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { useAuth } from '../contexts/AuthContext'
+import { insforge } from '../lib/insforge'
 import { Button } from '../components/ui/Button'
-import { MapPin, CreditCard, QrCode, Clock, Shield, Smartphone, ArrowRight, Car, Star, Zap, ChevronDown } from 'lucide-react'
+import { MapPin, CreditCard, QrCode, Clock, Shield, Smartphone, ArrowRight, Car, Star, Zap, ChevronDown, Navigation } from 'lucide-react'
 import { ROLES } from '../lib/constants'
+
+// Custom price marker for map
+function createLandingMarker(price) {
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="position:relative;display:inline-block;">
+      <div style="background:#000;color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3);">₹${price}/hr</div>
+      <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #000;margin:-1px auto 0;"></div>
+    </div>`,
+    iconSize: [0, 0],
+    iconAnchor: [30, 40],
+  })
+}
+
+// Auto-fit map to markers
+function FitBounds({ spots }) {
+  const map = useMap()
+  useEffect(() => {
+    if (spots.length > 0) {
+      const bounds = L.latLngBounds(spots.map((s) => [s.lat, s.lng]))
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 })
+    }
+  }, [spots, map])
+  return null
+}
 
 // Floating particle that drifts upward
 function FloatingParticle({ delay, duration, left, size, opacity }) {
@@ -61,6 +90,8 @@ export default function Landing() {
   const navigate = useNavigate()
   const { user, role } = useAuth()
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [mapSpots, setMapSpots] = useState([])
+  const [mapLoaded, setMapLoaded] = useState(false)
 
   useEffect(() => {
     if (user && role) {
@@ -72,6 +103,19 @@ export default function Landing() {
       navigate(redirectMap[role] || '/dashboard', { replace: true })
     }
   }, [user, role, navigate])
+
+  // Fetch parking spots for map preview
+  useEffect(() => {
+    const fetchSpots = async () => {
+      const { data } = await insforge.database
+        .from('parking_locations')
+        .select('id, title, address, lat, lng, price_per_hour, available_slots, photos')
+        .eq('status', 'approved')
+        .limit(20)
+      if (data) setMapSpots(data)
+    }
+    fetchSpots()
+  }, [])
 
   // Parallax mouse tracking for hero
   const handleMouseMove = (e) => {
@@ -244,111 +288,117 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Right: Floating visual composition */}
-            <div className="hidden lg:block relative h-[520px]">
-              {/* Main floating card */}
-              <FloatingCard delay={0} className="absolute top-12 left-8 z-10">
-                <div
-                  className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 w-72"
-                  style={{
-                    transform: `translate(${mousePos.x * -0.5}px, ${mousePos.y * -0.5}px)`,
-                    transition: 'transform 0.4s ease-out',
-                  }}
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
-                      <Car className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">Booking Confirmed</p>
-                      <p className="text-xs text-gray-400">Sector 62, Noida</p>
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Duration</span>
-                      <span className="font-semibold">3 hours</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Spot</span>
-                      <span className="font-semibold">A-12</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Amount</span>
-                      <span className="font-bold text-emerald-600">₹120</span>
-                    </div>
-                  </div>
-                </div>
-              </FloatingCard>
-
-              {/* QR floating card */}
-              <FloatingCard delay={1.5} className="absolute top-48 right-0 z-20">
-                <div
-                  className="bg-black text-white rounded-2xl shadow-2xl p-5 w-48"
-                  style={{
-                    transform: `translate(${mousePos.x * 0.3}px, ${mousePos.y * 0.3}px)`,
-                    transition: 'transform 0.5s ease-out',
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <QrCode className="w-4 h-4" />
-                    <span className="text-xs font-semibold">Entry Pass</span>
-                  </div>
-                  <div className="bg-white rounded-lg p-3">
-                    <div className="grid grid-cols-5 gap-1">
-                      {Array.from({ length: 25 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className={`aspect-square rounded-[2px] ${
-                            [0,1,3,4,5,9,10,14,15,19,20,21,23,24].includes(i) ? 'bg-black' : 'bg-gray-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </FloatingCard>
-
-              {/* Rating floating chip */}
-              <FloatingCard delay={0.8} className="absolute bottom-24 left-16 z-20">
-                <div
-                  className="bg-white rounded-full shadow-lg border border-gray-100 px-5 py-3 flex items-center gap-2"
-                  style={{
-                    transform: `translate(${mousePos.x * 0.4}px, ${mousePos.y * 0.4}px)`,
-                    transition: 'transform 0.35s ease-out',
-                  }}
-                >
-                  <div className="flex gap-0.5">
-                    {[1,2,3,4,5].map((s) => (
-                      <Star key={s} className={`w-3.5 h-3.5 ${s <= 4 ? 'fill-black text-black' : 'text-gray-200'}`} />
-                    ))}
-                  </div>
-                  <span className="text-xs font-bold">4.8</span>
-                  <span className="text-xs text-gray-400">(2,340)</span>
-                </div>
-              </FloatingCard>
-
-              {/* Price floating chip */}
-              <FloatingCard delay={2} className="absolute bottom-8 right-12 z-10">
-                <div
-                  className="bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-3"
-                  style={{
-                    transform: `translate(${mousePos.x * -0.3}px, ${mousePos.y * -0.3}px)`,
-                    transition: 'transform 0.45s ease-out',
-                  }}
-                >
-                  <p className="text-[10px] text-emerald-600 font-medium">Starting from</p>
-                  <p className="text-2xl font-black text-emerald-700">₹10<span className="text-sm font-medium">/hr</span></p>
-                </div>
-              </FloatingCard>
-
-              {/* Decorative orbiting dot */}
+            {/* Right: Live Map Preview */}
+            <div
+              className="hidden lg:block relative reveal-up"
+              style={{ animationDelay: '0.6s', animationFillMode: 'both' }}
+            >
               <div
-                className="absolute top-8 right-20 w-3 h-3 bg-black rounded-full"
+                className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-200"
+                style={{
+                  height: 520,
+                  transform: `translate(${mousePos.x * -0.15}px, ${mousePos.y * -0.15}px)`,
+                  transition: 'transform 0.4s ease-out',
+                }}
+              >
+                {/* Map */}
+                <MapContainer
+                  center={[20.5937, 78.9629]}
+                  zoom={5}
+                  minZoom={4}
+                  maxZoom={16}
+                  style={{ width: '100%', height: '100%' }}
+                  zoomControl={false}
+                  scrollWheelZoom={false}
+                  dragging={true}
+                  whenReady={() => setMapLoaded(true)}
+                >
+                  <TileLayer
+                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                  />
+                  {mapSpots.length > 0 && <FitBounds spots={mapSpots} />}
+                  {mapSpots.map((spot) => (
+                    <Marker
+                      key={spot.id}
+                      position={[spot.lat, spot.lng]}
+                      icon={createLandingMarker(spot.price_per_hour)}
+                    >
+                      <Popup>
+                        <div className="min-w-[180px] p-1">
+                          {spot.photos && spot.photos.length > 0 && (
+                            <img
+                              src={spot.photos[0]?.url || spot.photos[0]}
+                              alt={spot.title}
+                              className="w-full h-20 object-cover rounded-lg mb-2"
+                            />
+                          )}
+                          <h4 className="font-bold text-sm">{spot.title}</h4>
+                          <p className="text-xs text-gray-500 mt-0.5">{spot.address}</p>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="font-bold text-sm">₹{spot.price_per_hour}/hr</span>
+                            <span className="text-xs text-gray-400">{spot.available_slots} left</span>
+                          </div>
+                          <button
+                            onClick={() => navigate('/auth?mode=signup&role=user')}
+                            className="mt-2 w-full bg-black text-white text-xs py-1.5 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+                          >
+                            Book Now
+                          </button>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+
+                {/* Glass overlay header */}
+                <div className="absolute top-4 left-4 right-4 z-[1000] pointer-events-none">
+                  <div className="backdrop-blur-xl bg-black/60 rounded-2xl px-4 py-3 flex items-center justify-between border border-white/10">
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <MapPin className="w-4 h-4 text-white" />
+                        <span
+                          className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full"
+                          style={{ animation: 'pulse-ring 2s cubic-bezier(0, 0, 0.2, 1) infinite' }}
+                        />
+                      </div>
+                      <span className="text-white text-xs font-semibold">
+                        {mapSpots.length > 0 ? `${mapSpots.length} spots live` : 'Loading spots...'}
+                      </span>
+                    </div>
+                    <span className="text-white/50 text-[10px]">Click markers to explore</span>
+                  </div>
+                </div>
+
+                {/* Floating stat chips over map */}
+                {mapLoaded && (
+                  <>
+                    <FloatingCard delay={0.5} className="absolute bottom-4 left-4 z-[1000]">
+                      <div className="backdrop-blur-xl bg-white/90 rounded-xl px-4 py-2.5 shadow-lg border border-white/50 flex items-center gap-2">
+                        <Star className="w-3.5 h-3.5 fill-black text-black" />
+                        <span className="text-xs font-bold">4.8</span>
+                        <span className="text-[10px] text-gray-400">avg rating</span>
+                      </div>
+                    </FloatingCard>
+                    <FloatingCard delay={1.2} className="absolute bottom-4 right-4 z-[1000]">
+                      <div className="backdrop-blur-xl bg-emerald-500/90 rounded-xl px-4 py-2.5 shadow-lg flex items-center gap-2">
+                        <span className="text-xs font-bold text-white">From ₹10/hr</span>
+                      </div>
+                    </FloatingCard>
+                  </>
+                )}
+
+                {/* Gradient fade at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/20 to-transparent pointer-events-none z-[999]" />
+              </div>
+
+              {/* Decorative dots */}
+              <div
+                className="absolute -top-3 -right-3 w-3 h-3 bg-black rounded-full"
                 style={{ animation: 'float-rotate 5s ease-in-out infinite' }}
               />
               <div
-                className="absolute bottom-40 right-40 w-2 h-2 bg-gray-300 rounded-full"
+                className="absolute -bottom-2 -left-2 w-2 h-2 bg-gray-300 rounded-full"
                 style={{ animation: 'float-rotate 7s ease-in-out infinite 1s' }}
               />
             </div>
