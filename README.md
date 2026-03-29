@@ -1,16 +1,110 @@
-# React + Vite
+# 🚗 PARKLY  
+Smart Parking Marketplace
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+---
 
-Currently, two official plugins are available:
+## 🌟 Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+PARKLY is a platform that connects **vehicle owners** with **available parking spaces** in real-time.
 
-## React Compiler
+It works like a mix of **Airbnb + BookMyShow**, but for parking — allowing users to easily find and book parking spots while helping hosts monetize unused space.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🎯 Problem
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Difficulty in finding parking in cities  
+- Time and fuel wasted searching for spots  
+- Private parking spaces remain unused  
+
+---
+
+## 💡 Solution
+
+PARKLY enables:
+- Users to **search and book parking instantly**
+- Hosts to **list and earn from their space**
+- A **verified system** to ensure trust and safety  
+
+---
+
+## 🚀 Features
+
+### 👤 User
+- Sign up with email + OTP  
+- Explore parking using map  
+- View parking details  
+- Select slots (grid-based UI)  
+- Book parking in real-time  
+- Secure payment (Stripe test mode)  
+- Get QR-based booking confirmation  
+- Navigate via Google Maps  
+- Give ratings & reviews  
+
+---
+
+### 🏠 Host
+- Register parking space  
+- Upload required documents  
+- Add pricing and details  
+- Upload images  
+- Manage listings  
+
+---
+
+### 🛠️ Admin
+- Approve/reject host applications  
+- View and manage listings  
+- Monitor reviews  
+
+---
+
+## 🧱 Tech Stack
+
+- **Frontend:** HTML, CSS, JavaScript  
+- **Backend:** Node.js / Insforge (Antigravity)  
+- **Database & Auth:** Supabase  
+- **Maps:** Leaflet + Nominatim  
+- **Payments:** Stripe (Test Mode)  
+
+---
+
+## 🔄 Workflow
+
+### User Flow
+Sign Up → 
+Explore Map → 
+Select Parking → 
+Choose Slot → 
+Pay → 
+Get QR → 
+Navigate
+
+
+### Host Flow
+Register → 
+Upload Docs → 
+Get Approved → 
+Add Parking → 
+Go Live
+
+
+---
+
+## 📸 Demo & Screenshots
+
+> Add your visuals here before submission
+
+### Landing Page
+![Landing](./assets/landing.png)
+
+### Booking Page
+![Booking](./assets/booking.png)
+
+### Admin Dashboard
+![Admin](./assets/admin.png)
+
+### Demo Video
+[Watch Demo](./assets/demo.mp4)
+
+---
