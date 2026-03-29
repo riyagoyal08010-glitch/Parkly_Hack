@@ -102,29 +102,46 @@ app.post("/detect-plate", upload.single("image"), (req, res) => {
     env.TESSERACT_CMD = tesseractWin;
   }
 
-  const child = spawn(pythonCmd, [scriptPath, imagePath], { env, timeout: 60000 });
+  const child = spawn(pythonCmd, [scriptPath, imagePath], { env, shell: true });
   let stdout = "";
   let stderr = "";
 
   child.stdout.on("data", (data) => { stdout += data.toString(); });
   child.stderr.on("data", (data) => { stderr += data.toString(); });
 
+  // Kill if it takes too long (2 minutes for slow machines / first-time model load)
+  const killTimer = setTimeout(() => {
+    child.kill();
+  }, 120_000);
+
   child.on("close", async (code) => {
+    clearTimeout(killTimer);
     // Cleanup uploaded file after processing
     fs.unlink(imagePath, () => {});
 
     console.log(`Python exited with code ${code}`);
     if (stderr) console.log("Python stderr:", stderr.slice(0, 500));
 
-    if (!stdout.trim()) {
+    // Extract JSON from stdout (ignore EasyOCR/torch warnings printed to stdout)
+    let jsonStr = "";
+    const lines = stdout.trim().split("\n");
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (line.startsWith("{")) {
+        jsonStr = line;
+        break;
+      }
+    }
+
+    if (!jsonStr) {
       return res.status(500).json({ error: "Detection failed", details: stderr.slice(0, 300) || `Exit code: ${code}` });
     }
 
     let result;
     try {
-      result = JSON.parse(stdout.trim());
+      result = JSON.parse(jsonStr);
     } catch (e) {
-      return res.status(500).json({ error: "Invalid detection output", raw: stdout });
+      return res.status(500).json({ error: "Invalid detection output", raw: stdout.slice(0, 500) });
     }
 
     if (!result.plate) {

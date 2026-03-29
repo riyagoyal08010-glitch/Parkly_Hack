@@ -263,23 +263,26 @@ def detect_plate(img):
 # Main
 # ---------------------------------------------------------------------------
 def main():
-    if len(sys.argv) < 2:
-        output(error="Usage: python detect.py <image_path>")
+    try:
+        if len(sys.argv) < 2:
+            output(error="Usage: python detect.py <image_path>")
 
-    image_path = sys.argv[1]
-    if not os.path.isfile(image_path):
-        output(error=f"File not found: {image_path}")
+        image_path = sys.argv[1]
+        if not os.path.isfile(image_path):
+            output(error=f"File not found: {image_path}")
 
-    img = cv2.imread(image_path)
-    if img is None:
-        output(error=f"Could not read image: {image_path}")
+        img = cv2.imread(image_path)
+        if img is None:
+            output(error=f"Could not read image: {image_path}")
 
-    plate, confidence, method = detect_plate(img)
+        plate, confidence, method = detect_plate(img)
 
-    if plate:
-        output(plate=plate, confidence=confidence, method=method)
-    else:
-        output(error="No plate detected in image")
+        if plate:
+            output(plate=plate, confidence=confidence, method=method)
+        else:
+            output(error="No plate detected in image")
+    except Exception as e:
+        output(error=f"Detection crashed: {str(e)}")
 
 
 if __name__ == "__main__":
