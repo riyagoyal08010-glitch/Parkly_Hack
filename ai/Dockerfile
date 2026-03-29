@@ -1,8 +1,8 @@
 FROM python:3.10-slim
 
-# Install system deps for OpenCV + Tesseract (fallback)
+# System deps for OpenCV headless + Tesseract fallback
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 libglib2.0-0 tesseract-ocr curl \
+    libglib2.0-0 tesseract-ocr curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 20
@@ -12,7 +12,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 
 WORKDIR /app
 
-# Python deps first (cached layer)
+# Python deps (cached layer)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -26,7 +26,6 @@ RUN npm install --production
 # App code
 COPY detect.py server.js ./
 
-# Create uploads dir
 RUN mkdir -p uploads
 
 EXPOSE 5050
