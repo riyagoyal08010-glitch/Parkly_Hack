@@ -93,7 +93,6 @@ Go Live
 
 ## 📸 Demo & Screenshots
 
-> Add your visuals here before submission
 
 ### Landing Page
 ![Landing](./assets/landing.png)
