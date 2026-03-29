@@ -1,0 +1,7 @@
+node_modules
+uploads
+test_images
+test_plate.jpg
+__pycache__
+*.pyc
+.env
