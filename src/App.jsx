@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './components/ui/Toast'
 import { Navbar } from './components/layout/Navbar'
@@ -57,6 +57,9 @@ export default function App() {
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/review/:id" element={<AdminReview />} />
               </Route>
+
+              {/* Catch-all — redirect unknown routes to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <Chatbot />
           </div>
