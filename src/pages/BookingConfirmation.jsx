@@ -9,7 +9,7 @@ import { Badge } from '../components/ui/Badge'
 import { Loader } from '../components/ui/Loader'
 import { Textarea } from '../components/ui/Input'
 import { QRCodeSVG } from 'qrcode.react'
-import { CheckCircle, XCircle, MapPin, Clock, Download, ArrowLeft, Star, Send } from 'lucide-react'
+import { CheckCircle, XCircle, MapPin, Clock, Download, ArrowLeft, Star, Send, Hash } from 'lucide-react'
 
 const RATING_LABELS = ['', 'Poor', 'Below Average', 'Good', 'Very Good', 'Excellent']
 
@@ -54,6 +54,7 @@ export default function BookingConfirmation() {
         bid: data.id,
         uid: data.user_id,
         pid: data.parking_id,
+        plate: data.number_plate || null,
         from: data.start_time,
         to: data.end_time,
         ts: Date.now(),
@@ -262,6 +263,16 @@ export default function BookingConfirmation() {
               <p className="font-bold">₹{booking.total_amount}</p>
             </div>
           </div>
+
+          {booking.number_plate && (
+            <div className="border-t pt-3">
+              <p className="text-xs text-gray-500">Vehicle Number Plate</p>
+              <p className="font-mono font-bold text-sm tracking-wider flex items-center gap-1.5 mt-0.5">
+                <Hash className="w-3.5 h-3.5 text-gray-400" />
+                {booking.number_plate}
+              </p>
+            </div>
+          )}
 
           {booking.payment_id && (
             <div className="border-t pt-3">

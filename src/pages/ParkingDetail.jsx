@@ -11,7 +11,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { Card } from '../components/ui/Card'
 import { Loader } from '../components/ui/Loader'
-import { MapPin, Star, Car, Clock, ArrowLeft, Shield, MessageSquare, Navigation } from 'lucide-react'
+import { MapPin, Star, Car, Clock, ArrowLeft, Shield, MessageSquare, Navigation, Hash } from 'lucide-react'
 import SlotPicker from '../components/SlotPicker'
 import StarRating from '../components/StarRating'
 import ReviewCard from '../components/ReviewCard'
@@ -54,6 +54,8 @@ export default function ParkingDetail() {
   const [selectedSlotData, setSelectedSlotData] = useState(null)
   const [parkingRating, setParkingRating] = useState({ avg_rating: 0, review_count: 0 })
   const [nearbySpots, setNearbySpots] = useState([])
+  const [numberPlate, setNumberPlate] = useState('')
+  const [plateError, setPlateError] = useState('')
 
   const fetchRating = async () => {
     const { data } = await insforge.database.rpc('get_parking_rating', { p_id: id })
@@ -99,6 +101,23 @@ export default function ParkingDetail() {
   const duration = Math.max(0, parseInt(endHour) - parseInt(startHour))
   const totalAmount = parking ? duration * parking.price_per_hour : 0
 
+  // Indian vehicle number plate format: SS00SS0000 (e.g., PB10AB1234, MH12DE5678)
+  // Accepts with or without spaces/hyphens
+  const PLATE_REGEX = /^[A-Z]{2}\s?[0-9]{1,2}\s?[A-Z]{1,3}\s?[0-9]{1,4}$/i
+  const validatePlate = (value) => {
+    const cleaned = value.toUpperCase().replace(/[\s-]/g, '')
+    if (!cleaned) return 'Vehicle number plate is required'
+    if (cleaned.length < 6 || cleaned.length > 12) return 'Invalid plate length'
+    if (!PLATE_REGEX.test(value.trim())) return 'Invalid format. Use Indian format (e.g., PB10AB1234)'
+    return ''
+  }
+
+  const handlePlateChange = (e) => {
+    const value = e.target.value.toUpperCase()
+    setNumberPlate(value)
+    if (plateError) setPlateError(validatePlate(value))
+  }
+
   const handleBooking = async () => {
     if (duration <= 0) {
       toast('End time must be after start time', 'error')
@@ -106,6 +125,13 @@ export default function ParkingDetail() {
     }
     if (!selectedSlot) {
       toast('Please select a parking slot', 'error')
+      return
+    }
+    // Validate number plate before proceeding
+    const plateValidationError = validatePlate(numberPlate)
+    if (plateValidationError) {
+      setPlateError(plateValidationError)
+      toast(plateValidationError, 'error')
       return
     }
 
@@ -134,7 +160,8 @@ export default function ParkingDetail() {
       const startTime = new Date(`${date}T${startHour.padStart(2, '0')}:00:00`)
       const endTime = new Date(`${date}T${endHour.padStart(2, '0')}:00:00`)
 
-      // 2. Create booking with pending payment
+      // 2. Create booking with pending payment + number plate
+      const cleanedPlate = numberPlate.toUpperCase().replace(/[\s-]/g, '')
       const { data: bookingData, error: bookingError } = await insforge.database
         .from('bookings')
         .insert([{
@@ -146,6 +173,7 @@ export default function ParkingDetail() {
           total_amount: totalAmount,
           payment_status: 'pending',
           status: 'active',
+          number_plate: cleanedPlate,
         }])
         .select()
         .single()
@@ -426,7 +454,34 @@ export default function ParkingDetail() {
                 )}
               </div>
 
-              {/* 3. Pricing summary */}
+              {/* 3. Vehicle number plate */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vehicle Number Plate
+                </label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={numberPlate}
+                    onChange={handlePlateChange}
+                    onBlur={() => setPlateError(validatePlate(numberPlate))}
+                    placeholder="e.g. PB10AB1234"
+                    maxLength={15}
+                    className={`w-full pl-9 pr-4 py-2.5 border rounded-md text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 ${
+                      plateError
+                        ? 'border-red-300 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-black'
+                    }`}
+                  />
+                </div>
+                {plateError && (
+                  <p className="text-xs text-red-500 mt-1">{plateError}</p>
+                )}
+                <p className="text-[10px] text-gray-400 mt-1">Indian format: SS00SS0000</p>
+              </div>
+
+              {/* 4. Pricing summary */}
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">₹{parking.price_per_hour} x {duration} hr{duration !== 1 ? 's' : ''}</span>
@@ -442,7 +497,7 @@ export default function ParkingDetail() {
                 className="w-full"
                 size="lg"
                 loading={booking}
-                disabled={duration <= 0 || !selectedSlot}
+                disabled={duration <= 0 || !selectedSlot || !numberPlate.trim() || !!plateError}
                 onClick={handleBooking}
               >
                 {`Pay ₹${totalAmount}`}
@@ -453,6 +508,9 @@ export default function ParkingDetail() {
               )}
               {duration > 0 && !selectedSlot && (
                 <p className="text-xs text-gray-500 text-center">Select a parking slot to continue</p>
+              )}
+              {duration > 0 && selectedSlot && !numberPlate.trim() && (
+                <p className="text-xs text-gray-500 text-center">Enter your vehicle number plate</p>
               )}
             </div>
           </Card>

@@ -17,6 +17,7 @@ import HostRegister from './pages/HostRegister'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminReview from './pages/AdminReview'
 import AdminLogin from './pages/AdminLogin'
+import PlateDetection from './pages/PlateDetection'
 import Chatbot from './components/Chatbot'
 
 export default function App() {
@@ -44,6 +45,11 @@ export default function App() {
                 <Route path="/host/dashboard" element={<HostDashboard />} />
                 <Route path="/host/earnings" element={<HostEarnings />} />
                 <Route path="/host/register" element={<HostRegister />} />
+              </Route>
+
+              {/* Plate detection — accessible by hosts and admins */}
+              <Route element={<ProtectedRoute allowedRoles={[ROLES.HOST, ROLES.ADMIN]} />}>
+                <Route path="/plate-detection" element={<PlateDetection />} />
               </Route>
 
               {/* Admin routes */}

@@ -29,6 +29,7 @@ export function Navbar() {
           { to: '/host/dashboard', label: 'Dashboard' },
           { to: '/host/earnings', label: 'Earnings' },
           { to: '/host/register', label: 'Register Parking' },
+          { to: '/plate-detection', label: 'Plate Scanner' },
         ]
       case ROLES.ADMIN:
         return [

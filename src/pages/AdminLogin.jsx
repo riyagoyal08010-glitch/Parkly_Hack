@@ -137,7 +137,7 @@ export default function AdminLogin() {
                 <p className="text-red-400 text-xs mt-2 text-center">{codeError}</p>
               )}
             </div>
-            <Button type="submit" size="lg" className="w-full bg-white text-black hover:bg-gray-200 rounded-xl">
+            <Button type="submit" size="lg" variant="outline" className="w-full bg-white text-black hover:bg-gray-200 rounded-xl border-white">
               Verify Code
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
@@ -162,11 +162,11 @@ export default function AdminLogin() {
                   className="w-full px-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white text-center text-2xl font-mono tracking-[0.5em] placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-white/30"
                   required
                 />
-                <Button type="submit" size="lg" loading={loading} className="w-full bg-white text-black hover:bg-gray-200 rounded-xl">
+                <Button type="submit" size="lg" loading={loading} variant="outline" className="w-full bg-white text-black hover:bg-gray-200 rounded-xl border-white">
                   Verify & Enter
                 </Button>
               </form>
-              <button onClick={handleResendCode} className="mt-3 text-xs text-gray-600 hover:text-gray-400">
+              <button onClick={handleResendCode} className="mt-3 text-xs text-white/60 hover:text-white">
                 Didn't get the code? Resend
               </button>
             </div>
@@ -179,7 +179,7 @@ export default function AdminLogin() {
             <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/10">
               <button
                 className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
-                  authMode === 'signin' ? 'bg-white text-black' : 'text-gray-500'
+                  authMode === 'signin' ? 'bg-white text-black' : 'text-white/70 hover:text-white'
                 }`}
                 onClick={() => setAuthMode('signin')}
               >
@@ -188,7 +188,7 @@ export default function AdminLogin() {
               </button>
               <button
                 className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
-                  authMode === 'signup' ? 'bg-white text-black' : 'text-gray-500'
+                  authMode === 'signup' ? 'bg-white text-black' : 'text-white/70 hover:text-white'
                 }`}
                 onClick={() => setAuthMode('signup')}
               >
@@ -250,7 +250,7 @@ export default function AdminLogin() {
                 </div>
               </div>
 
-              <Button type="submit" size="lg" loading={loading} className="w-full bg-white text-black hover:bg-gray-200 rounded-xl">
+              <Button type="submit" size="lg" loading={loading} variant="outline" className="w-full bg-white text-black hover:bg-gray-200 rounded-xl border-white">
                 {authMode === 'signin' ? 'Sign In as Admin' : 'Create Admin Account'}
               </Button>
             </form>
@@ -258,7 +258,7 @@ export default function AdminLogin() {
             <button
               type="button"
               onClick={() => setStep('code')}
-              className="w-full text-center text-sm text-gray-600 hover:text-gray-400 mt-4"
+              className="w-full text-center text-sm text-white/60 hover:text-white mt-4"
             >
               Back to code entry
             </button>

@@ -6,7 +6,7 @@ import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Loader } from '../components/ui/Loader'
-import { MapPin, Clock, Search, Calendar } from 'lucide-react'
+import { MapPin, Clock, Search, Calendar, Hash } from 'lucide-react'
 
 export default function UserDashboard() {
   const { user, profile } = useAuth()
@@ -117,6 +117,12 @@ export default function UserDashboard() {
                         <Clock className="w-3.5 h-3.5" />
                         {start.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} - {end.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </span>
+                      {b.number_plate && (
+                        <span className="flex items-center gap-1 font-mono text-xs font-semibold text-gray-600">
+                          <Hash className="w-3.5 h-3.5" />
+                          {b.number_plate}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
